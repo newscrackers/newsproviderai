@@ -11,14 +11,9 @@ on:
 
 jobs:
   upload-videos:
-    name: Upload Videos to YouTube Channels
+    name: Upload Videos to YouTube Channels Sequentially
     runs-on: ubuntu-latest
     timeout-minutes: 180  # 3 hour execution limit
-    
-    strategy:
-      fail-fast: false  # Continue with other channels even if one fails
-      matrix:
-        channel: ["NeuroNews", "ByteReport", "InfoPulse", "EchoAI"]
     
     steps:
       - name: Checkout repository
@@ -37,7 +32,7 @@ jobs:
       - name: Create temp directories
         run: |
           mkdir -p temp_download
-          mkdir -p tokens_${{ matrix.channel }}
+          mkdir -p tokens_NeuroNews tokens_ByteReport tokens_InfoPulse tokens_EchoAI
       
       # Values are hardcoded in the Python script
       
@@ -50,28 +45,27 @@ jobs:
           echo "Working directory structure:"
           ls -la
           
-      - name: Upload videos to ${{ matrix.channel }}
-        id: upload_videos
+      # Upload to each channel sequentially (one after another)
+      
+      - name: Upload videos to NeuroNews
+        id: upload_videos_neuronews
         continue-on-error: true  # Don't fail the whole workflow if one channel fails
         run: |
-          echo "Starting uploads for ${{ matrix.channel }} channel"
-          # Add a small delay between channel uploads to avoid rate limits
-          # This is especially important when running parallel uploads
-          sleep $(( RANDOM % 30 + 5 ))
+          echo "Starting uploads for NeuroNews channel"
           
           # Try uploading with multiple attempts if needed
           set +e  # Don't exit on error
           MAX_ATTEMPTS=3
           for attempt in $(seq 1 $MAX_ATTEMPTS); do
-            echo "Attempt $attempt of $MAX_ATTEMPTS for ${{ matrix.channel }}"
-            python upload_gdrive_videos.py --channel-name "${{ matrix.channel }}" --limit 3 --privacy-status "unlisted"
+            echo "Attempt $attempt of $MAX_ATTEMPTS for NeuroNews"
+            python upload_gdrive_videos.py --channel-name "NeuroNews" --limit 3 --privacy-status "unlisted"
             EXIT_CODE=$?
             
             if [ $EXIT_CODE -eq 0 ]; then
-              echo "Successfully uploaded to ${{ matrix.channel }} on attempt $attempt"
+              echo "Successfully uploaded to NeuroNews on attempt $attempt"
               break
             elif [ $EXIT_CODE -eq 100 ]; then
-              echo "Daily upload limit reached for ${{ matrix.channel }}, continuing with other channels"
+              echo "Daily upload limit reached for NeuroNews, continuing with other channels"
               break
             elif [ $attempt -lt $MAX_ATTEMPTS ]; then
               echo "Upload attempt failed, waiting before retry..."
@@ -79,13 +73,126 @@ jobs:
             fi
           done
           
-      - name: Check upload status
+      - name: Check NeuroNews upload status
         run: |
-          if [ "${{ steps.upload_videos.outcome }}" == "success" ]; then
-            echo "✅ Successfully uploaded videos to ${{ matrix.channel }}"
+          if [ "${{ steps.upload_videos_neuronews.outcome }}" == "success" ]; then
+            echo "✅ Successfully uploaded videos to NeuroNews"
           else
-            echo "❌ Failed to upload videos to ${{ matrix.channel }}"
-            # No need to send failure notification here since the script handles notifications
+            echo "❌ Failed to upload videos to NeuroNews"
+          fi
+      
+      # Wait between channel uploads to avoid potential rate limits
+      - name: Wait between channel uploads
+        run: sleep 60
+      
+      - name: Upload videos to ByteReport
+        id: upload_videos_bytereport
+        continue-on-error: true
+        run: |
+          echo "Starting uploads for ByteReport channel"
+          
+          # Try uploading with multiple attempts if needed
+          set +e  # Don't exit on error
+          MAX_ATTEMPTS=3
+          for attempt in $(seq 1 $MAX_ATTEMPTS); do
+            echo "Attempt $attempt of $MAX_ATTEMPTS for ByteReport"
+            python upload_gdrive_videos.py --channel-name "ByteReport" --limit 3 --privacy-status "unlisted"
+            EXIT_CODE=$?
+            
+            if [ $EXIT_CODE -eq 0 ]; then
+              echo "Successfully uploaded to ByteReport on attempt $attempt"
+              break
+            elif [ $EXIT_CODE -eq 100 ]; then
+              echo "Daily upload limit reached for ByteReport, continuing with other channels"
+              break
+            elif [ $attempt -lt $MAX_ATTEMPTS ]; then
+              echo "Upload attempt failed, waiting before retry..."
+              sleep $(( RANDOM % 60 + 30 ))  # Random delay between 30-90 seconds
+            fi
+          done
+          
+      - name: Check ByteReport upload status
+        run: |
+          if [ "${{ steps.upload_videos_bytereport.outcome }}" == "success" ]; then
+            echo "✅ Successfully uploaded videos to ByteReport"
+          else
+            echo "❌ Failed to upload videos to ByteReport"
+          fi
+      
+      # Wait between channel uploads to avoid potential rate limits
+      - name: Wait between channel uploads
+        run: sleep 60
+      
+      - name: Upload videos to InfoPulse
+        id: upload_videos_infopulse
+        continue-on-error: true
+        run: |
+          echo "Starting uploads for InfoPulse channel"
+          
+          # Try uploading with multiple attempts if needed
+          set +e  # Don't exit on error
+          MAX_ATTEMPTS=3
+          for attempt in $(seq 1 $MAX_ATTEMPTS); do
+            echo "Attempt $attempt of $MAX_ATTEMPTS for InfoPulse"
+            python upload_gdrive_videos.py --channel-name "InfoPulse" --limit 3 --privacy-status "unlisted"
+            EXIT_CODE=$?
+            
+            if [ $EXIT_CODE -eq 0 ]; then
+              echo "Successfully uploaded to InfoPulse on attempt $attempt"
+              break
+            elif [ $EXIT_CODE -eq 100 ]; then
+              echo "Daily upload limit reached for InfoPulse, continuing with other channels"
+              break
+            elif [ $attempt -lt $MAX_ATTEMPTS ]; then
+              echo "Upload attempt failed, waiting before retry..."
+              sleep $(( RANDOM % 60 + 30 ))  # Random delay between 30-90 seconds
+            fi
+          done
+          
+      - name: Check InfoPulse upload status
+        run: |
+          if [ "${{ steps.upload_videos_infopulse.outcome }}" == "success" ]; then
+            echo "✅ Successfully uploaded videos to InfoPulse"
+          else
+            echo "❌ Failed to upload videos to InfoPulse"
+          fi
+      
+      # Wait between channel uploads to avoid potential rate limits
+      - name: Wait between channel uploads
+        run: sleep 60
+      
+      - name: Upload videos to EchoAI
+        id: upload_videos_echoai
+        continue-on-error: true
+        run: |
+          echo "Starting uploads for EchoAI channel"
+          
+          # Try uploading with multiple attempts if needed
+          set +e  # Don't exit on error
+          MAX_ATTEMPTS=3
+          for attempt in $(seq 1 $MAX_ATTEMPTS); do
+            echo "Attempt $attempt of $MAX_ATTEMPTS for EchoAI"
+            python upload_gdrive_videos.py --channel-name "EchoAI" --limit 3 --privacy-status "unlisted"
+            EXIT_CODE=$?
+            
+            if [ $EXIT_CODE -eq 0 ]; then
+              echo "Successfully uploaded to EchoAI on attempt $attempt"
+              break
+            elif [ $EXIT_CODE -eq 100 ]; then
+              echo "Daily upload limit reached for EchoAI, continuing with other channels"
+              break
+            elif [ $attempt -lt $MAX_ATTEMPTS ]; then
+              echo "Upload attempt failed, waiting before retry..."
+              sleep $(( RANDOM % 60 + 30 ))  # Random delay between 30-90 seconds
+            fi
+          done
+          
+      - name: Check EchoAI upload status
+        run: |
+          if [ "${{ steps.upload_videos_echoai.outcome }}" == "success" ]; then
+            echo "✅ Successfully uploaded videos to EchoAI"
+          else
+            echo "❌ Failed to upload videos to EchoAI"
           fi
           
       - name: Cleanup
@@ -110,8 +217,12 @@ jobs:
           completion_message="🚀 Daily YouTube Upload Report 📊\n\n"
           completion_message+="✅ Completed at: $now\n"
           completion_message+="✅ Videos: 3 per channel (12 total)\n"
-          completion_message+="✅ Channels: NeuroNews, ByteReport, InfoPulse, EchoAI\n\n"
-          completion_message+="Your content is being distributed across all channels!\n"
+          completion_message+="✅ Channels: Sequentially uploaded to:\n"
+          completion_message+="   1. NeuroNews\n"
+          completion_message+="   2. ByteReport\n"
+          completion_message+="   3. InfoPulse\n"
+          completion_message+="   4. EchoAI\n\n"
+          completion_message+="Your content is being distributed across all channels sequentially!\n"
           completion_message+="#ContentDelivered #AutomationSuccess"
           
           # Send the notification
