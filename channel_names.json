@@ -1,0 +1,28 @@
+{
+    "channels": [
+        {
+            "channel_name": "NeuroNews",
+            "token_file": "acces_channel_token/NeuroNews _token_bg_1.pickle",
+            "email_group": "bg",
+            "original_project_id": "warm-agility-456715-q9"
+        },
+        {
+            "channel_name": "ByteReport",
+            "token_file": "acces_channel_token/ByteReport_token_bg_2.pickle",
+            "email_group": "bg",
+            "original_project_id": "warm-agility-456715-q9"
+        },
+        {
+            "channel_name": "InfoPulse",
+            "token_file": "acces_channel_token/InfoPulse _token_cl_1.pickle",
+            "email_group": "cl",
+            "original_project_id": "youtubeupload-456715"
+        },
+        {
+            "channel_name": "EchoAI",
+            "token_file": "acces_channel_token/EchoAI_token_cl_2.pickle",
+            "email_group": "cl",
+            "original_project_id": "youtubeupload-456715"
+        }
+    ]
+}

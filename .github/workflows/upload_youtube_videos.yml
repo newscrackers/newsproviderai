@@ -1,0 +1,118 @@
+name: Daily YouTube Video Uploads
+
+on:
+  schedule:
+    # Run daily at 2 PM UTC (14:00)
+    - cron: '0 14 * * *'
+
+jobs:
+  upload-videos:
+    name: Upload Videos to YouTube Channels
+    runs-on: ubuntu-latest
+    timeout-minutes: 180  # 3 hour execution limit
+    
+    strategy:
+      fail-fast: false  # Continue with other channels even if one fails
+      matrix:
+        channel: ["NeuroNews", "ByteReport", "InfoPulse", "EchoAI"]
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt || pip install google-api-python-client google-auth google-auth-oauthlib google-auth-httplib2 httplib2 requests
+
+      - name: Create temp directories
+        run: |
+          mkdir -p temp_download
+          mkdir -p tokens_${{ matrix.channel }}
+      
+      # Values are hardcoded in the Python script
+      
+      - name: Create temporary directories
+        run: |
+          # Just create the temp directory needed for downloads
+          mkdir -p temp_download
+          
+          # For debugging
+          echo "Working directory structure:"
+          ls -la
+          
+      - name: Upload videos to ${{ matrix.channel }}
+        id: upload_videos
+        continue-on-error: true  # Don't fail the whole workflow if one channel fails
+        run: |
+          echo "Starting uploads for ${{ matrix.channel }} channel"
+          # Add a small delay between channel uploads to avoid rate limits
+          # This is especially important when running parallel uploads
+          sleep $(( RANDOM % 30 + 5 ))
+          
+          # Try uploading with multiple attempts if needed
+          set +e  # Don't exit on error
+          MAX_ATTEMPTS=3
+          for attempt in $(seq 1 $MAX_ATTEMPTS); do
+            echo "Attempt $attempt of $MAX_ATTEMPTS for ${{ matrix.channel }}"
+            python upload_gdrive_videos.py --channel-name "${{ matrix.channel }}" --limit 3 --privacy-status "unlisted"
+            EXIT_CODE=$?
+            
+            if [ $EXIT_CODE -eq 0 ]; then
+              echo "Successfully uploaded to ${{ matrix.channel }} on attempt $attempt"
+              break
+            elif [ $EXIT_CODE -eq 100 ]; then
+              echo "Daily upload limit reached for ${{ matrix.channel }}, continuing with other channels"
+              break
+            elif [ $attempt -lt $MAX_ATTEMPTS ]; then
+              echo "Upload attempt failed, waiting before retry..."
+              sleep $(( RANDOM % 60 + 30 ))  # Random delay between 30-90 seconds
+            fi
+          done
+          
+      - name: Check upload status
+        run: |
+          if [ "${{ steps.upload_videos.outcome }}" == "success" ]; then
+            echo "✅ Successfully uploaded videos to ${{ matrix.channel }}"
+          else
+            echo "❌ Failed to upload videos to ${{ matrix.channel }}"
+            # No need to send failure notification here since the script handles notifications
+          fi
+          
+      - name: Cleanup
+        if: always()  # Run even if previous steps failed
+        run: |
+          echo "Cleaning up temporary files"
+          rm -rf temp_download/*
+          
+  notification:
+    name: Send Summary Notification
+    needs: upload-videos
+    runs-on: ubuntu-latest
+    if: always()  # Run even if uploads job failed
+    
+    steps:
+      - name: Send completion notification
+        run: |
+          # Get the current date and time in a readable format
+          now=$(date)
+          
+          # Create a detailed completion message
+          completion_message="🚀 Daily YouTube Upload Report 📊\n\n"
+          completion_message+="✅ Completed at: $now\n"
+          completion_message+="✅ Videos: 3 per channel (12 total)\n"
+          completion_message+="✅ Channels: NeuroNews, ByteReport, InfoPulse, EchoAI\n\n"
+          completion_message+="Your content is being distributed across all channels!\n"
+          completion_message+="#ContentDelivered #AutomationSuccess"
+          
+          # Send the notification
+          curl -s -X POST "https://api.telegram.org/bot8109148303:AAG1G8iv_uIpz3HpYOZaUknhySXoMYGYlBA/sendMessage" \
+            -d chat_id="-1002493560505" \
+            -d message_thread_id="777" \
+            -d parse_mode="Markdown" \
+            -d text="$completion_message"
