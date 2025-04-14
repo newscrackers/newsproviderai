@@ -1,6 +1,10 @@
 name: Daily YouTube Video Uploads
 
 on:
+  # Allow manual runs from the GitHub UI
+  workflow_dispatch:
+  
+  # Daily scheduled runs
   schedule:
     # Run daily at 2 PM UTC (14:00)
     - cron: '0 14 * * *'
